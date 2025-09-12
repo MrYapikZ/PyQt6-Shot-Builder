@@ -8,8 +8,8 @@ class MainUI(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.setWindowTitle("Playblast Collector")
-        self.ui.label_version.setText("v0.1.2")
+        self.setWindowTitle("Shot Builder")
+        self.ui.label_version.setText("v0.1.0")
 
         self.ui.tabWidget_main.addTab(ShotGeneratorHandler(), "Shot Generator")
         # Additional UI setup can be done here

@@ -1,2 +1,2 @@
-collection_list = ['character', '3dprop', 'vehicle', 'camera']
-camera_collection_name = 'camera'
+collection_list = ['CHAR', '3dprop', 'VEH', 'CAM']
+camera_collection_name = 'CAM'
