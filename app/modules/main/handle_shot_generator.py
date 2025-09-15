@@ -28,6 +28,7 @@ class ShotGeneratorHandler(QWidget):
         self.ui.pushButton_listControl_add.clicked.connect(self.on_move_available_item)
         self.ui.pushButton_listControl_remove.clicked.connect(self.on_move_selected_item)
         self.ui.pushButton_generate.clicked.connect(self.on_generate)
+        self.ui.pushButton_generate_clear.clicked.connect(self.on_clear)
 
         self.csv_data = None
 
@@ -171,3 +172,8 @@ class ShotGeneratorHandler(QWidget):
                     else:
                         print(f"Blender process for {shot_file} failed.")
                     break
+
+    def on_clear(self):
+        self.ui.listWidget_selected.clear()
+        self.ui.listWidget_available.clear()
+        self.csv_data.clear()

@@ -57,16 +57,6 @@ class BlenderSettings:
                 
                 safe_link_to_scene("$CAMERA_COLLECTION")
             
-                # Set the active camera from the appended collection
-                camera_collection = bpy.data.collections.get("$CAMERA_COLLECTION")
-                if camera_collection:
-                    for obj in camera_collection.objects:
-                        if obj.type == "CAMERA":
-                            bpy.context.view_layer.objects.active = obj
-                            scene_data.camera = obj
-                            print(f"Active camera set to: {obj.name}")
-                            break
-            
                 # Update camera settings
                 active_camera = bpy.context.scene.camera
                 if active_camera:
