@@ -21,12 +21,14 @@ class BlenderSettings:
             
             def link_animation():
                 # Link the animation file
+                print("Animation file:", "$ANIMATION_FILE")
                 with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
                     collections_to_link = $COLLECTION_LIST
                     for collection_name in collections_to_link:
                         if collection_name in data_from.collections:
                             print(f"Collection '{collection_name}' found in animation file, linking...")
                             data_to.collections.append(collection_name)
+                            print(f"Linked collections: {data_to.collections}")
                         else:
                             available_collections = [col for col in data_from.collections]
                             print(
@@ -134,14 +136,6 @@ class BlenderSettings:
                     bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].inputs["Image"]
                 )
                 bpy.data.scenes["Scene"].node_tree.links.new(
-                    bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs["Denoising Normal"],
-                    bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].inputs["Normal"]
-                )
-                bpy.data.scenes["Scene"].node_tree.links.new(
-                    bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs["Denoising Albedo"],
-                    bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].inputs["Albedo"]
-                )
-                bpy.data.scenes["Scene"].node_tree.links.new(
                     bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].outputs["Image"],
                     bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs["Image"]
                 )
@@ -153,10 +147,14 @@ class BlenderSettings:
                     "CryptoAsset00", "CryptoAsset01", "CryptoAsset02",
                     "CryptoMaterial00", "CryptoMaterial01", "CryptoMaterial02"
                 ]:
-                    bpy.data.scenes["Scene"].node_tree.links.new(
-                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[p],
-                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[p]
-                    )
+                    if p != "Transparent":
+                        bpy.data.scenes["Scene"].node_tree.links.new(
+                            bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[p],
+                            bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[p]
+                        )
+                    else:
+                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[7]
+                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[7]
             
             
             def alpha_char_node():
