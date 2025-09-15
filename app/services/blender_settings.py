@@ -14,14 +14,14 @@ class BlenderSettings:
             import bpy
             
             # Open master file
-            bpy.ops.wm.open_mainfile($FILEPATH)
+            bpy.ops.wm.open_mainfile(filepath="$FILEPATH")
             
             
             # Define file paths and parameters
             
             def link_animation():
                 # Link the animation file
-                with bpy.data.libraries.load($ANIMATION_FILE, link=True) as (data_from, data_to):
+                with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
                     collections_to_link = $COLLECTION_LIST
                     for collection_name in collections_to_link:
                         if collection_name in data_from.collections:
@@ -36,7 +36,7 @@ class BlenderSettings:
             def append_camera():
                 # Append 'camera' collection
                 scene_data = bpy.data.scenes.get("Scene")
-                with bpy.data.libraries.load($ANIMATION_FILE, link=False) as (data_from, data_to):
+                with bpy.data.libraries.load("$ANIMATION_FILE", link=False) as (data_from, data_to):
                     collections_to_append = [$CAMERA_COLLECTION]
                     for collection_name in collections_to_append:
                         if collection_name in data_from.collections:
@@ -124,9 +124,9 @@ class BlenderSettings:
             
                 # Base path output file (contoh path, sesuai generator)
                 bpy.data.scenes["Scene"].node_tree.nodes[
-                    "beauty_output"].base_path = $BEAUTY_BASE_PATH
+                    "beauty_output"].base_path = "$BEAUTY_BASE_PATH"
                 for slot in bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].file_slots:
-                    slot.path = $BEAUTY_BASE_PATH
+                    slot.path = "$BEAUTY_BASE_PATH"
             
                 # Sambungan antar socket
                 bpy.data.scenes["Scene"].node_tree.links.new(
@@ -178,9 +178,9 @@ class BlenderSettings:
             
                 # Base path output file (contoh path, sesuai generator)
                 bpy.data.scenes["Scene"].node_tree.nodes[
-                    "alpha_chr_output"].base_path = $ALPHA_BASE_PATH
+                    "alpha_chr_output"].base_path = "$ALPHA_BASE_PATH"
                 for slot in bpy.data.scenes["Scene"].node_tree.nodes["alpha_chr_output"].file_slots:
-                    slot.path = $ALPHA_BASE_PATH
+                    slot.path = "$ALPHA_BASE_PATH"
             
                 # Sambungan antar socket
                 bpy.data.scenes["Scene"].node_tree.links.new(
@@ -194,8 +194,8 @@ class BlenderSettings:
             
             
             # Save the modified Blender file
-            bpy.ops.wm.save_as_mainfile(filepath=$OUTPUT_PATH)
-            print(f"File saved as: {$OUTPUT_PATH}")
+            bpy.ops.wm.save_as_mainfile(filepath="$OUTPUT_PATH")
+            print("File saved as: $OUTPUT_PATH")
             
             # Quit Blender
             bpy.ops.wm.quit_blender()

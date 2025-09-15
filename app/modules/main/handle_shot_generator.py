@@ -154,7 +154,7 @@ class ShotGeneratorHandler(QWidget):
                                                                  project_path=project_output_path, ep=ep,
                                                                  seq=seq, shot=shot, exr_type="alpha_char")
 
-                    lighting_script = BlenderSettings.generate_lighting_script(master_file=mastershot_path,
+                    lighting_script = BlenderSettings.generate_lighting_script(master_file=str(mastershot_path),
                                                                                    animation_file=str(animation_file),
                                                                                    collection_list=collection_list,
                                                                                    camera_collection=camera_collection_name,

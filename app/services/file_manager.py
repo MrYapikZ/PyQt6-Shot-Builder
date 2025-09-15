@@ -23,4 +23,4 @@ class FileManager:
     @staticmethod
     def generate_exr_type(project_code: str, project_path: str, ep: str, seq: str, shot: str, exr_type: str) -> str:
         return os.path.join(project_path, f"{ep}", f"{ep}_{seq}",
-                            f"{ep}_{seq}_{shot}", "exr", exr_type, f"{project_code}_{ep}_{seq}_{shot}_{exr_type}.%04d.exr")
+                            f"{ep}_{seq}_{shot}", "exr", exr_type, f"{project_code}_{ep}_{seq}_{shot}_{exr_type}_####.exr")
