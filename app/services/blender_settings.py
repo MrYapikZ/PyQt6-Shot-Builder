@@ -37,7 +37,7 @@ class BlenderSettings:
                 # Append 'camera' collection
                 scene_data = bpy.data.scenes.get("Scene")
                 with bpy.data.libraries.load("$ANIMATION_FILE", link=False) as (data_from, data_to):
-                    collections_to_append = [$CAMERA_COLLECTION]
+                    collections_to_append = ["$CAMERA_COLLECTION"]
                     for collection_name in collections_to_append:
                         if collection_name in data_from.collections:
                             print(f"Collection '{collection_name}' found in animation file, appending...")
@@ -48,7 +48,7 @@ class BlenderSettings:
                                 f"Collection '{collection_name}' not found in animation file. Available collections: {available_collections}")
             
                 # Set the active camera from the appended collection
-                camera_collection = bpy.data.collections.get($CAMERA_COLLECTION)
+                camera_collection = bpy.data.collections.get("$CAMERA_COLLECTION")
                 if camera_collection:
                     for obj in camera_collection.objects:
                         if obj.type == "CAMERA":
@@ -90,7 +90,7 @@ class BlenderSettings:
             
             def set_relative():
                 # Make all file paths relative
-                bpy.ops.path.rel()
+                bpy.context.preferences.filepaths.use_relative_paths = True
                 bpy.ops.file.make_paths_relative()
             
             
@@ -192,6 +192,14 @@ class BlenderSettings:
                     bpy.data.scenes["Scene"].node_tree.nodes["alpha_chr_output"].inputs["Alpha"]
                 )
             
+            # Execute functions
+            link_animation()
+            append_camera()
+            set_duration()
+            set_relative()
+            beauty_node()
+            alpha_char_node()
+            print("All operations completed successfully.")
             
             # Save the modified Blender file
             bpy.ops.wm.save_as_mainfile(filepath="$OUTPUT_PATH")

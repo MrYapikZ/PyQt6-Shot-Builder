@@ -87,8 +87,8 @@ class ShotGeneratorHandler(QWidget):
             return
 
         # Get project path
-        project_production_path = FileManager().get_project_path(project_data[-1])
-        project_output_path = FileManager().get_project_path(project_data[0])
+        project_production_path = FileManager().get_project_path(project_data[0])
+        project_output_path = FileManager().get_project_path(project_data[-1])
 
         # Get mastershot file path
         mastershot_path = self.ui.lineEdit_mastershot.text()
@@ -141,7 +141,7 @@ class ShotGeneratorHandler(QWidget):
                             break
 
                     # Generate lighting path
-                    lighting_path = FileManager().generate_shot_path(project_path=project_output_path,
+                    lighting_path = FileManager().generate_shot_path(project_path=project_production_path,
                                                                      production=division_list[1][2],
                                                                      division=division_list[1][3], ep=ep, seq=seq,
                                                                      shot=shot)
