@@ -16,45 +16,53 @@ class BlenderSettings:
             # Open master file
             bpy.ops.wm.open_mainfile(filepath="$FILEPATH")
             
+            # Function to safely link collection to scene
+            def safe_link_to_scene(coll_name: str):
+                scene_root = bpy.context.scene.collection
+                coll = bpy.data.collections.get(coll_name)
+                if coll:
+                    if coll.name not in scene_root.children.keys():
+                        scene_root.children.link(coll)
+                        print(f"Collection {coll_name} added to scene.")
+                    else:
+                        print(f"Collection {coll_name} already in scene.")
+                else:
+                    print(f"[ERROR] Collection {coll_name} not found datablock after link/append.")
+            
             
             # Define file paths and parameters
             
             def link_animation():
                 # Link the animation file
                 print("Animation file:", "$ANIMATION_FILE")
-                with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
-                    collections_to_link = $COLLECTION_LIST
-                    for collection_name in collections_to_link:
-                        if collection_name in data_from.collections:
-                            print(f"Collection '{collection_name}' found in animation file, linking...")
-                            data_to.collections.append(collection_name)
-                            print(f"Linked collections: {data_to.collections}")
+                for col in $COLLECTION_LIST:
+                    with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
+                        if col in data_from.collections:
+                            data_to.collections.append(col)
+                            print(f"Linked collection: {col}")
                         else:
-                            available_collections = [col for col in data_from.collections]
-                            print(
-                                f"Collection '{collection_name}' not found in animation file. Available collections: {available_collections}")
+                            print(f"[WARNING] Collection {col} not found in $ANIMATION_FILE")
+                    safe_link_to_scene(col)
             
             
             def append_camera():
                 # Append 'camera' collection
                 scene_data = bpy.data.scenes.get("Scene")
                 with bpy.data.libraries.load("$ANIMATION_FILE", link=False) as (data_from, data_to):
-                    collections_to_append = ["$CAMERA_COLLECTION"]
-                    for collection_name in collections_to_append:
-                        if collection_name in data_from.collections:
-                            print(f"Collection '{collection_name}' found in animation file, appending...")
-                            data_to.collections.append(collection_name)
-                        else:
-                            available_collections = [col for col in data_from.collections]
-                            print(
-                                f"Collection '{collection_name}' not found in animation file. Available collections: {available_collections}")
+                    if "$CAMERA_COLLECTION" in data_from.collections:
+                        data_to.collections.append("$CAMERA_COLLECTION")
+                        print("Appended collection: $CAMERA_COLLECTION")
+                    else:
+                        print("[WARNING] Collection $CAMERA_COLLECTION not found in $ANIMATION_FILE")
+                
+                safe_link_to_scene("$CAMERA_COLLECTION")
             
                 # Set the active camera from the appended collection
                 camera_collection = bpy.data.collections.get("$CAMERA_COLLECTION")
                 if camera_collection:
                     for obj in camera_collection.objects:
                         if obj.type == "CAMERA":
-                            bpy.context.view_laer.objects.active = obj
+                            bpy.context.view_layer.objects.active = obj
                             scene_data.camera = obj
                             print(f"Active camera set to: {obj.name}")
                             break
