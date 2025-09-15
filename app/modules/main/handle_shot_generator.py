@@ -171,7 +171,9 @@ class ShotGeneratorHandler(QWidget):
                         print(f"Blender process for {shot_file} completed successfully.")
                     else:
                         print(f"Blender process for {shot_file} failed.")
+                        QMessageBox.critical(self, "Error", f"Failed to generate lighting file for: {shot_file}")
                     break
+        QMessageBox.information(self, "Success", "Successfully generated lighting file")
 
     def on_clear(self):
         self.ui.listWidget_selected.clear()
