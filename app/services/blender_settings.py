@@ -38,6 +38,8 @@ class BlenderSettings:
                 for col in $COLLECTION_LIST:
                     with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
                         if col in data_from.collections:
+                            old = bpy.data.collections[col]
+                            bpy.data.collections.remove(old)
                             data_to.collections.append(col)
                             print(f"Linked collection: {col}")
                         else:

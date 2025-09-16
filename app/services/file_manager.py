@@ -9,8 +9,10 @@ class FileManager:
 
     @staticmethod
     def generate_shot_path(project_path: str, production: str, division: str, ep: str, seq: str, shot: str) -> str:
-        return os.path.join(project_path, production, division, f"{ep}", f"{ep}_{seq}",
+        shot_path = os.path.join(project_path, production, division, f"{ep}", f"{ep}_{seq}",
                             f"{ep}_{seq}_{shot}")
+        os.makedirs(shot_path, exist_ok=True)
+        return shot_path
 
     @staticmethod
     def generate_file_name(project_code: str, ep: str, seq: str, shot: str, division: str, extension: str) -> str:
