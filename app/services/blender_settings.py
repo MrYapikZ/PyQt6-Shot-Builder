@@ -16,18 +16,34 @@ class BlenderSettings:
             # Open master file
             bpy.ops.wm.open_mainfile(filepath="$FILEPATH")
             
-            # Function to safely link collection to scene
-            def safe_link_to_scene(coll_name: str):
-                scene_root = bpy.context.scene.collection
-                coll = bpy.data.collections.get(coll_name)
-                if coll:
-                    if coll.name not in scene_root.children.keys():
-                        scene_root.children.link(coll)
-                        print(f"Collection {coll_name} added to scene.")
+            
+            # Utility functions for collection management
+            def _unlink_collection_from(parent, target):
+                for child in list(parent.children):
+                    if child == target:
+                        parent.children.unlink(child)
                     else:
-                        print(f"Collection {coll_name} already in scene.")
-                else:
-                    print(f"[ERROR] Collection {coll_name} not found datablock after link/append.")
+                        _unlink_collection_from(child, target)
+            
+            def _force_remove_collection(name: str):
+                coll = bpy.data.collections.get(name)
+                if not coll:
+                    return
+                for scene in bpy.data.scenes:
+                    _unlink_collection_from(scene.collection, coll)
+                try:
+                    bpy.data.collections.remove(coll)
+                    print(f"Removed existing collection: {name}")
+                except RuntimeError as e:
+                    print(f"[WARNING] Could not remove '{name}': {e}")
+            
+            def ensure_parent_in_scene(name: str) -> bpy.types.Collection:
+                if name != "$CAMERA_COLLECTION":
+                    _force_remove_collection(name)
+                    parent = bpy.data.collections.new(name)
+                    bpy.context.scene.collection.children.link(parent)
+                    print(f"Created and linked parent collection: {name}")
+                    return parent
             
             
             # Define file paths and parameters
@@ -35,30 +51,71 @@ class BlenderSettings:
             def link_animation():
                 # Link the animation file
                 print("Animation file:", "$ANIMATION_FILE")
-                for col in $COLLECTION_LIST:
-                    with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
-                        if col in data_from.collections:
-                            old = bpy.data.collections[col]
-                            bpy.data.collections.remove(old)
-                            data_to.collections.append(col)
-                            print(f"Linked collection: {col}")
+                parents = {}
+                for name, prefix in $COLLECTION_LIST:
+                    if name == "$CAMERA_COLLECTION":
+                        _force_remove_collection("$CAMERA_COLLECTION")
+                        continue
+                    parents[name] = ensure_parent_in_scene(name)
+            
+                with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
+                    desired = {}
+                    for parent_name, prefix in $COLLECTION_LIST:
+                        if prefix is None:
+                            # Special case: CAM → link exact 'CAM' if present
+                            if "$CAMERA_COLLECTION" in data_from.collections:
+                                desired[parent_name] = ["$CAMERA_COLLECTION"]
+                                data_to.collections.append("$CAMERA_COLLECTION")
+                            else:
+                                desired[parent_name] = []
+                                print("[WARNING] '$CAMERA_COLLECTION' collection not found in library")
                         else:
-                            print(f"[WARNING] Collection {col} not found in $ANIMATION_FILE")
-                    safe_link_to_scene(col)
+                            # Prefix case
+                            names = [n for n in data_from.collections if n.startswith(prefix)]
+                            desired[parent_name] = names
+                            for n in names:
+                                data_to.collections.append(n)
             
-            
-            def append_camera():
-                # Append 'camera' collection
-                scene_data = bpy.data.scenes.get("Scene")
-                with bpy.data.libraries.load("$ANIMATION_FILE", link=False) as (data_from, data_to):
-                    if "$CAMERA_COLLECTION" in data_from.collections:
-                        data_to.collections.append("$CAMERA_COLLECTION")
-                        print("Appended collection: $CAMERA_COLLECTION")
+                for parent_name, child_names in desired.items():
+                    if parent_name == "$CAMERA_COLLECTION":
+                        # Just link CAM directly into the scene root
+                        for cname in child_names:
+                            coll = bpy.data.collections.get(cname)
+                            if coll and cname not in bpy.context.scene.collection.children.keys():
+                                bpy.context.scene.collection.children.link(coll)
+                                print(f"Linked '{cname}' directly into the scene")
                     else:
-                        print("[WARNING] Collection $CAMERA_COLLECTION not found in $ANIMATION_FILE")
-                
-                safe_link_to_scene("$CAMERA_COLLECTION")
+                        # Normal parent bucket case
+                        parent = parents[parent_name]
             
+                        for cname in child_names:
+                            # Try to find the collection by name
+                            col = bpy.data.collections.get(cname)
+                            if not col:
+                                print(f"[WARNING] Expected linked collection missing: {cname}")
+                                continue
+            
+                            # Ensure it's from the right library
+                            if not (col.library and col.library.filepath == "$ANIMATION_FILE"):
+                                col = next(
+                                    (c for c in bpy.data.collections
+                                     if c.name == cname and c.library and c.library.filepath == "$ANIMATION_FILE"),
+                                    None
+                                )
+            
+                            if not col:
+                                print(f"[WARNING] No valid collection found for: {cname}")
+                                continue
+            
+                            print(f"CHILD: {col.library.filepath}")
+            
+                            if cname not in parent.children.keys():
+                                parent.children.link(col)
+                                print(f"Added '{cname}' under '{parent_name}'")
+                            else:
+                                print(f"'{cname}' already under '{parent_name}'")
+            
+            def update_camera():
                 # Update camera settings
                 active_camera = bpy.context.scene.camera
                 if active_camera:
@@ -190,9 +247,10 @@ class BlenderSettings:
                     bpy.data.scenes["Scene"].node_tree.nodes["alpha_chr_output"].inputs["Alpha"]
                 )
             
+            
             # Execute functions
             link_animation()
-            append_camera()
+            update_camera()
             set_duration()
             set_relative()
             beauty_node()

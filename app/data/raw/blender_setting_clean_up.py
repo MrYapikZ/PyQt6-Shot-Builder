@@ -1,49 +1,108 @@
 import bpy
 
 # Open master file
-bpy.ops.wm.open_mainfile(FILEPATH)
+bpy.ops.wm.open_mainfile(filepath="$FILEPATH")
+
+
+# Utility functions for collection management
+def _unlink_collection_from(parent, target):
+    for child in list(parent.children):
+        if child == target:
+            parent.children.unlink(child)
+        else:
+            _unlink_collection_from(child, target)
+
+def _force_remove_collection(name: str):
+    coll = bpy.data.collections.get(name)
+    if not coll:
+        return
+    for scene in bpy.data.scenes:
+        _unlink_collection_from(scene.collection, coll)
+    try:
+        bpy.data.collections.remove(coll)
+        print(f"Removed existing collection: {name}")
+    except RuntimeError as e:
+        print(f"[WARNING] Could not remove '{name}': {e}")
+
+def ensure_parent_in_scene(name: str) -> bpy.types.Collection:
+    if name != "$CAMERA_COLLECTION":
+        _force_remove_collection(name)
+        parent = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(parent)
+        print(f"Created and linked parent collection: {name}")
+        return parent
 
 
 # Define file paths and parameters
 
 def link_animation():
     # Link the animation file
-    with bpy.data.libraries.load(ANIMATION_FILE, link=True) as (data_from, data_to):
-        collections_to_link = [COLLECTION_LIST]
-        for collection_name in collections_to_link:
-            if collection_name in data_from.collections:
-                print(f"Collection '{collection_name}' found in animation file, linking...")
-                data_to.collections.append(collection_name)
+    print("Animation file:", "$ANIMATION_FILE")
+    parents = {}
+    for name, prefix in $COLLECTION_LIST:
+        if name == "$CAMERA_COLLECTION":
+            _force_remove_collection("$CAMERA_COLLECTION")
+            continue
+        parents[name] = ensure_parent_in_scene(name)
+
+    with bpy.data.libraries.load("$ANIMATION_FILE", link=True) as (data_from, data_to):
+        desired = {}
+        for parent_name, prefix in $COLLECTION_LIST:
+            if prefix is None:
+                # Special case: CAM → link exact 'CAM' if present
+                if "$CAMERA_COLLECTION" in data_from.collections:
+                    desired[parent_name] = ["$CAMERA_COLLECTION"]
+                    data_to.collections.append("$CAMERA_COLLECTION")
+                else:
+                    desired[parent_name] = []
+                    print("[WARNING] '$CAMERA_COLLECTION' collection not found in library")
             else:
-                available_collections = [col for col in data_from.collections]
-                print(
-                    f"Collection '{collection_name}' not found in animation file. Available collections: {available_collections}")
+                # Prefix case
+                names = [n for n in data_from.collections if n.startswith(prefix)]
+                desired[parent_name] = names
+                for n in names:
+                    data_to.collections.append(n)
 
+    for parent_name, child_names in desired.items():
+        if parent_name == "$CAMERA_COLLECTION":
+            # Just link CAM directly into the scene root
+            for cname in child_names:
+                coll = bpy.data.collections.get(cname)
+                if coll and cname not in bpy.context.scene.collection.children.keys():
+                    bpy.context.scene.collection.children.link(coll)
+                    print(f"Linked '{cname}' directly into the scene")
+        else:
+            # Normal parent bucket case
+            parent = parents[parent_name]
 
-def append_camera():
-    # Append 'camera' collection
-    scene_data = bpy.data.scenes.get("Scene")
-    with bpy.data.libraries.load(ANIMATION_FILE, link=False) as (data_from, data_to):
-        collections_to_append = [CAMERA_COLLECTION]
-        for collection_name in collections_to_append:
-            if collection_name in data_from.collections:
-                print(f"Collection '{collection_name}' found in animation file, appending...")
-                data_to.collections.append(collection_name)
-            else:
-                available_collections = [col for col in data_from.collections]
-                print(
-                    f"Collection '{collection_name}' not found in animation file. Available collections: {available_collections}")
+            for cname in child_names:
+                # Try to find the collection by name
+                col = bpy.data.collections.get(cname)
+                if not col:
+                    print(f"[WARNING] Expected linked collection missing: {cname}")
+                    continue
 
-    # Set the active camera from the appended collection
-    camera_collection = bpy.data.collections.get(CAMERA_COLLECTION)
-    if camera_collection:
-        for obj in camera_collection.objects:
-            if obj.type == "CAMERA":
-                bpy.context.view_laer.objects.active = obj
-                scene_data.camera = obj
-                print(f"Active camera set to: {obj.name}")
-                break
+                # Ensure it's from the right library
+                if not (col.library and col.library.filepath == "$ANIMATION_FILE"):
+                    col = next(
+                        (c for c in bpy.data.collections
+                         if c.name == cname and c.library and c.library.filepath == "$ANIMATION_FILE"),
+                        None
+                    )
 
+                if not col:
+                    print(f"[WARNING] No valid collection found for: {cname}")
+                    continue
+
+                print(f"CHILD: {col.library.filepath}")
+
+                if cname not in parent.children.keys():
+                    parent.children.link(col)
+                    print(f"Added '{cname}' under '{parent_name}'")
+                else:
+                    print(f"'{cname}' already under '{parent_name}'")
+
+def update_camera():
     # Update camera settings
     active_camera = bpy.context.scene.camera
     if active_camera:
@@ -58,9 +117,9 @@ def set_duration():
     # Set the frame range based on the scene name
     scene_data = bpy.data.scenes.get("Scene")
     scene = bpy.context.scene
-    scene.frame_start = START_FRAME
-    scene.frame_end = END_FRAME
-    print(f"Frame range set to: {START_FRAME} - {END_FRAME}")
+    scene.frame_start = $START_FRAME
+    scene.frame_end = $END_FRAME
+    print(f"Frame range set to: {$START_FRAME} - {$END_FRAME}")
 
     # Calculate and set frame step
     if scene_data:
@@ -77,7 +136,7 @@ def set_duration():
 
 def set_relative():
     # Make all file paths relative
-    bpy.ops.path.rel()
+    bpy.context.preferences.filepaths.use_relative_paths = True
     bpy.ops.file.make_paths_relative()
 
 
@@ -111,24 +170,14 @@ def beauty_node():
 
     # Base path output file (contoh path, sesuai generator)
     bpy.data.scenes["Scene"].node_tree.nodes[
-        "beauty_output"].base_path = "/mnt/K/ep000/ep000_sq00/ep000_sq00_sh0000/exr/beauty/jgt_ep000_sq00_sh0000_beauty_####"
-    FIX_PATH_LATER
+        "beauty_output"].base_path = "$BEAUTY_BASE_PATH"
     for slot in bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].file_slots:
-        slot.path = "/mnt/K/ep000/ep000_sq00/ep000_sq00_sh0000/exr/beauty/jgt_ep000_sq00_sh0000_beauty_####"
-        FIX_PATH_LATER
+        slot.path = "$BEAUTY_BASE_PATH"
 
     # Sambungan antar socket
     bpy.data.scenes["Scene"].node_tree.links.new(
         bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs["Image"],
         bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].inputs["Image"]
-    )
-    bpy.data.scenes["Scene"].node_tree.links.new(
-        bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs["Denoising Normal"],
-        bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].inputs["Normal"]
-    )
-    bpy.data.scenes["Scene"].node_tree.links.new(
-        bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs["Denoising Albedo"],
-        bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].inputs["Albedo"]
     )
     bpy.data.scenes["Scene"].node_tree.links.new(
         bpy.data.scenes["Scene"].node_tree.nodes["beauty_denoise"].outputs["Image"],
@@ -142,10 +191,14 @@ def beauty_node():
         "CryptoAsset00", "CryptoAsset01", "CryptoAsset02",
         "CryptoMaterial00", "CryptoMaterial01", "CryptoMaterial02"
     ]:
-        bpy.data.scenes["Scene"].node_tree.links.new(
-            bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[p],
-            bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[p]
-        )
+        if p != "Transparent":
+            bpy.data.scenes["Scene"].node_tree.links.new(
+                bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[p],
+                bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[p]
+            )
+        else:
+            bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[7]
+            bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[7]
 
 
 def alpha_char_node():
@@ -167,11 +220,9 @@ def alpha_char_node():
 
     # Base path output file (contoh path, sesuai generator)
     bpy.data.scenes["Scene"].node_tree.nodes[
-        "alpha_chr_output"].base_path = "/mnt/K/ep000/ep000_sq00/ep000_sq00_sh0000/exr/alpha_char/jgt_ep000_sq00_sh0000_alpha_char_####"
-    FIX_PATH_LATER
+        "alpha_chr_output"].base_path = "$ALPHA_BASE_PATH"
     for slot in bpy.data.scenes["Scene"].node_tree.nodes["alpha_chr_output"].file_slots:
-        slot.path = "/mnt/K/ep000/ep000_sq00/ep000_sq00_sh0000/exr/alpha_char/jgt_ep000_sq00_sh0000_alpha_char_####"
-        FIX_PATH_LATER
+        slot.path = "$ALPHA_BASE_PATH"
 
     # Sambungan antar socket
     bpy.data.scenes["Scene"].node_tree.links.new(
@@ -184,9 +235,18 @@ def alpha_char_node():
     )
 
 
+# Execute functions
+link_animation()
+update_camera()
+set_duration()
+set_relative()
+beauty_node()
+alpha_char_node()
+print("All operations completed successfully.")
+
 # Save the modified Blender file
-bpy.ops.wm.save_as_mainfile(filepath=OUTPUT_PATH)
-print(f"File saved as: {OUTPUT_PATH}")
+bpy.ops.wm.save_as_mainfile(filepath="$OUTPUT_PATH")
+print("File saved as: $OUTPUT_PATH")
 
 # Quit Blender
 bpy.ops.wm.quit_blender()
