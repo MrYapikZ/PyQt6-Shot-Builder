@@ -247,12 +247,18 @@ class BlenderSettings:
                     bpy.data.scenes["Scene"].node_tree.nodes["alpha_chr_output"].inputs["Alpha"]
                 )
             
+            def cleanup_node():
+                scene = bpy.context.scene
+                tree = scene.node_tree
+                for node in list(tree.nodes):
+                    tree.nodes.remove(node)
             
             # Execute functions
             link_animation()
             update_camera()
             set_duration()
             set_relative()
+            cleanup_node()
             beauty_node()
             alpha_char_node()
             print("All operations completed successfully.")
