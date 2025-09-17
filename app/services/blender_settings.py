@@ -204,14 +204,10 @@ class BlenderSettings:
                     "CryptoAsset00", "CryptoAsset01", "CryptoAsset02",
                     "CryptoMaterial00", "CryptoMaterial01", "CryptoMaterial02"
                 ]:
-                    if p != "Transparent":
-                        bpy.data.scenes["Scene"].node_tree.links.new(
-                            bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[p],
-                            bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[p]
-                        )
-                    else:
-                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[7]
-                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[7]
+                    bpy.data.scenes["Scene"].node_tree.links.new(
+                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_layer"].outputs[("Transp" if p == "Transparent" else p)],
+                        bpy.data.scenes["Scene"].node_tree.nodes["beauty_output"].inputs[p]
+                    )
             
             
             def alpha_char_node():
