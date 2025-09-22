@@ -134,18 +134,6 @@ class BlenderSettings:
                 scene.frame_end = $END_FRAME
                 print(f"Frame range set to: {$START_FRAME} - {$END_FRAME}")
             
-                # Calculate and set frame step
-                if scene_data:
-                    frame_step_value = (scene_data.frame_end - scene_data.frame_start) / 2
-            
-                    if frame_step_value % 1 != 0:
-                        frame_step_value -= 0.5
-            
-                    scene_data.frame_step = int(frame_step_value)
-                    print(f"Frame step set to: {scene_data.frame_step}")
-                else:
-                    print("Scene 'Scene' not found.")
-            
             
             def set_relative():
                 # Make all file paths relative
