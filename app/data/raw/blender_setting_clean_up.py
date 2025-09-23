@@ -12,6 +12,7 @@ def _unlink_collection_from(parent, target):
         else:
             _unlink_collection_from(child, target)
 
+
 def _force_remove_collection(name: str):
     coll = bpy.data.collections.get(name)
     if not coll:
@@ -24,6 +25,7 @@ def _force_remove_collection(name: str):
     except RuntimeError as e:
         print(f"[WARNING] Could not remove '{name}': {e}")
 
+
 def ensure_parent_in_scene(name: str) -> bpy.types.Collection:
     if name != "$CAMERA_COLLECTION":
         _force_remove_collection(name)
@@ -31,6 +33,44 @@ def ensure_parent_in_scene(name: str) -> bpy.types.Collection:
         bpy.context.scene.collection.children.link(parent)
         print(f"Created and linked parent collection: {name}")
         return parent
+
+
+# Holdout enable/disable
+def _walk_layer_collections(layer_coll):
+    yield layer_coll
+    for child in layer_coll.children:
+        yield from _walk_layer_collections(child)
+
+
+def find_layer_collection(view_layer, collection_name: str):
+    for lc in _walk_layer_collections(view_layer.layer_collection):
+        if lc.collection and lc.collection.name == collection_name:
+            return lc
+    return None
+
+
+def set_collection_holdout(collection_name: str, enabled: bool = True, all_view_layers: bool = False):
+    scene = bpy.context.scene
+    if not scene:
+        raise RuntimeError("No active scene found.")
+
+    target_layers = scene.view_layers if all_view_layers else [bpy.context.view_layer]
+
+    found_any = False
+    for vl in target_layers:
+        lc = find_layer_collection(vl, collection_name)
+        if lc is None:
+            print(f"[INFO] Collection '{collection_name}' not present in view layer '{vl.name}'.")
+            continue
+        lc.holdout = bool(enabled)
+        print(f"[OK] Set holdout={enabled} for '{collection_name}' in view layer '{vl.name}'.")
+        found_any = True
+
+    if not found_any:
+        raise ValueError(
+            f"Collection '{collection_name}' was not found in the current scene's view-layer tree. "
+            "Make sure the collection is linked into this scene and not excluded from the view layer."
+        )
 
 
 # Define file paths and parameters
@@ -101,6 +141,7 @@ def link_animation():
                     print(f"Added '{cname}' under '{parent_name}'")
                 else:
                     print(f"'{cname}' already under '{parent_name}'")
+
 
 def update_camera():
     # Update camera settings
@@ -218,11 +259,22 @@ def alpha_char_node():
         bpy.data.scenes["Scene"].node_tree.nodes["alpha_chr_output"].inputs["Alpha"]
     )
 
+    # Enable holdout
+    target_layer_name = "alpha_char"
+    target_layer = bpy.context.scene.view_layers.get(target_layer_name)
+    if target_layer is None:
+        raise ValueError(f"View layer '{target_layer_name}' not found in the current scene.")
+    bpy.context.window.view_layer = target_layer
+    print(f"Switched to view layer: {target_layer_name}")
+    set_collection_holdout("SET", enabled=True)
+
+
 def cleanup_node():
     scene = bpy.context.scene
     tree = scene.node_tree
     for node in list(tree.nodes):
         tree.nodes.remove(node)
+
 
 # Execute functions
 link_animation()
