@@ -36,41 +36,66 @@ def ensure_parent_in_scene(name: str) -> bpy.types.Collection:
 
 
 # Holdout enable/disable
-def _walk_layer_collections(layer_coll):
-    yield layer_coll
-    for child in layer_coll.children:
-        yield from _walk_layer_collections(child)
-
-
-def find_layer_collection(view_layer, collection_name: str):
-    for lc in _walk_layer_collections(view_layer.layer_collection):
-        if lc.collection and lc.collection.name == collection_name:
-            return lc
+def _find_layer_collection_by_coll(root_lc: bpy.types.LayerCollection,
+                                   target_coll: bpy.types.Collection):
+    if root_lc.collection == target_coll:
+        return root_lc
+    for child in root_lc.children:
+        found = _find_layer_collection_by_coll(child, target_coll)
+        if found:
+            return found
     return None
 
+def _set_holdout_recursive(lc: bpy.types.LayerCollection, value: bool):
+    lc.holdout = bool(value)
+    for c in lc.children:
+        _set_holdout_recursive(c, value)
 
-def set_collection_holdout(collection_name: str, enabled: bool = True, all_view_layers: bool = False):
+
+def set_collection_holdout(collection_name: str, enabled: bool = True, all_view_layers: bool = False, recursive: bool = True, must_exist: bool = True,):
     scene = bpy.context.scene
     if not scene:
         raise RuntimeError("No active scene found.")
 
-    target_layers = scene.view_layers if all_view_layers else [bpy.context.view_layer]
+    # Resolve collection argument
+    if isinstance(collection_name, str):
+        coll = bpy.data.collections.get(collection_name)
+        if not coll:
+            raise ValueError(f"No collection named '{collection_name}'")
+        coll_name = collection_name
+    elif isinstance(collection_name, bpy.types.Collection):
+        coll = collection_name
+        coll_name = coll.name
+    else:
+        raise TypeError("`collection` must be a name (str) or a bpy.types.Collection")
 
-    found_any = False
-    for vl in target_layers:
-        lc = find_layer_collection(vl, collection_name)
+    view_layers = scene.view_layers if all_view_layers else [bpy.context.view_layer]
+
+    modified = 0
+    for vl in view_layers:
+        root = vl.layer_collection
+        lc = _find_layer_collection_by_coll(root, coll)
         if lc is None:
-            print(f"[INFO] Collection '{collection_name}' not present in view layer '{vl.name}'.")
+            print(f"[INFO] Collection '{coll_name}' not found in layer '{vl.name}'.")
             continue
-        lc.holdout = bool(enabled)
-        print(f"[OK] Set holdout={enabled} for '{collection_name}' in view layer '{vl.name}'.")
-        found_any = True
 
-    if not found_any:
+        if recursive:
+            _set_holdout_recursive(lc, enabled)
+        else:
+            lc.holdout = bool(enabled)
+
+        state = "ON" if enabled else "OFF"
+        scope = "including all sub-collections" if recursive else "only this collection"
+        print(f"[OK] Holdout {state} for '{coll_name}' ({scope}) in View Layer '{vl.name}'.")
+        modified += 1
+
+    if must_exist and modified == 0:
         raise ValueError(
-            f"Collection '{collection_name}' was not found in the current scene's view-layer tree. "
+            f"Collection '{coll_name}' was not found in the targeted view layers. "
             "Make sure the collection is linked into this scene and not excluded from the view layer."
         )
+
+    return modified
 
 
 # Define file paths and parameters
@@ -266,7 +291,7 @@ def alpha_char_node():
         raise ValueError(f"View layer '{target_layer_name}' not found in the current scene.")
     bpy.context.window.view_layer = target_layer
     print(f"Switched to view layer: {target_layer_name}")
-    set_collection_holdout("SET", enabled=True)
+    set_collection_holdout("SET")
 
 
 def cleanup_node():
