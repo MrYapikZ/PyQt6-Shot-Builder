@@ -9,7 +9,7 @@ class MainUI(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setWindowTitle("Shot Builder")
-        self.ui.label_version.setText("v0.2.3")
+        self.ui.label_version.setText("v0.2.4")
 
         self.ui.tabWidget_main.addTab(ShotGeneratorHandler(), "Shot Generator")
         # Additional UI setup can be done here
